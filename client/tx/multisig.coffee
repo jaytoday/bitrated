@@ -1,7 +1,7 @@
 { Util, convert: { bytesToHex } } = require 'bitcoinjs-lib'
 { get_address, create_multisig, verify_sig, ADDR_PUB, TESTNET } = require '../../lib/bitcoin/index.coffee'
 Key = require '../../lib/bitcoin/key.coffee'
-{ iferr, error_displayer, success, parse_query, format_url, render } = require '../lib/util.coffee'
+{ iferr, error_displayer, success, parse_query, format_url, render, click_to_select } = require '../lib/util.coffee'
 { format_locals, build_tx_args } = require './lib/util.coffee'
 { is_final_tx } = require '../../lib/bitcoin/tx.coffee'
 { get_channel, tx_request, tx_broadcast } = require './lib/networking.coffee'
@@ -17,7 +17,7 @@ $root = $ '.content'
 display_error = error_displayer $root
 
 # Read and validate query params
-{ bob, bob_priv, alice, trent, terms, proof, is_dispute, _is_new } = query_args = parse_query()
+{ bob, bob_priv, alice, trent, terms, proof, is_dispute, secret, _is_new } = query_args = parse_query()
 
 try
   if bob_priv? then bob = Key.from_privkey bob_priv
@@ -37,7 +37,10 @@ try
 catch err then return display_error err
 
 { address: multisig, pubkeys, script } = create_multisig [ bob.pub, alice.pub, trent.pub ]
-channel = get_channel { bob, alice, trent, terms }
+
+# Backward comptabillity - use the generated channel as the secret when no
+# secret is provided
+secret ?= get_channel { bob, alice, trent, terms }
 
 document.title = "#{multisig} | Bitrated"
 
@@ -48,17 +51,18 @@ render el = $ view format_locals {
   is_dispute
 
   pubkeys: pubkeys.map bytesToHex
-  multisig, multisig_qr: qr 'bitcoin:'+multisig
+  multisig, multisig_qr: qr 'bitcoin:'+multisig, margin: 0
 
   bob_address:   get_address bob.pub, ADDR_PUB
   alice_address: get_address alice.pub, ADDR_PUB
   trent_address: get_address trent.pub, ADDR_PUB
 
-  trent_url: format_url 'tx.html', build_tx_args { bob, alice, trent, terms, proof, is_dispute: true }
+  trent_url: format_url 'tx.html', build_tx_args { bob, alice, trent, terms, proof, secret, is_dispute: true }
 
   default_fee: Util.formatValue DEFAULT_FEE
   testnet: TESTNET
 }
+do click_to_select
 
 # When loaded for the first time, display the headsup message
 # and remove the _is_new flag from the URL
@@ -78,7 +82,7 @@ el.find('.show-advanced').change ->
 
 # Initialize the transaction builder
 tx_builder el.find('.tx-builder'), {
-  multisig, script, pubkeys, channel
+  multisig, script, pubkeys, secret, is_dispute
   key: if is_dispute then trent else bob
 }, iferr display_error, (signed_tx) ->
   # If its a final transaction (with two signatures), broadcast it to the
@@ -89,6 +93,6 @@ tx_builder el.find('.tx-builder'), {
                             success "<p>Transaction successfully broadcasted to the Bitcoin network.</p>
                                      <p><small><strong>Transaction id</strong>: #{txid}</small></p>"
   # Otherwise, submit an approval request
-  else tx_request channel, signed_tx, iferr display_error,
-                                      success '''<p>Transaction approval request was sent to the other parties.</p>
-                                                 <p>Once its approved and signed by one of them, the transaction will be broadcasted to the Bitcoin network.</p>'''
+  else tx_request secret, signed_tx, iferr display_error,
+                success '''<p>Transaction request was sent to the other parties. It will expire in two days.</p>
+                           <p>Once approved, the transaction will be broadcasted to the Bitcoin network.</p>'''

@@ -1,20 +1,21 @@
 extend ../views/layout
 
 prepend title
-  | Security policy | 
+  | Security | 
 
 block content
   .container-page
     :markdown
-      ## Security policy
+      ## Security
 
       #### SSL encryption
-      To prevent MITM attacks, all data communication is encrypted with 256-bit SSL.
-      This is the industry standard for encrypting communications.
+      To prevent MITM attacks, all data communication is encrypted with 256-bit SSL,
+      and the Strict-Transport-Security header is used to instruct browsers to always
+      communicate with Bitrated over SSL.
 
       We also employ [perfect forward secrecy](http://en.wikipedia.org/wiki/Forward_secrecy)
       to ensure that even if our keys compromised in the future, our past communications are still secured.
-      You can see our SSL Labs test score [here](https://www.ssllabs.com/ssltest/analyze.html?d=bitrated.com).
+      You can view our SSL Labs test score [here](https://www.ssllabs.com/ssltest/analyze.html?d=bitrated.com).
 
       #### Client-side app
 
@@ -23,45 +24,24 @@ block content
       client-side technology. In particular:
 
       - Private keys are created and used in your browser, and are **never sent to or processed by our servers**.
-      - The transaction terms are stored in the hash portion of the URL, and are never sent to our servers.
+      - The transaction terms are never sent to our servers.
       - Transactions are constructed and signed locally.
 
-      Some data is sent to the server in order to enable communication between users, using the server
-      as a proxy to pass messages around.
-      The data is sent to the other parties and discarded immediately, and no permanent copy is ever saved.
-      This is kept to the absolute required minimum, and the data is not of sensitive nature.
+      Some data is sent to the server in order to enable communication between users.
+      Those messages are encrypted end-to-end using [TripleSec](https://keybase.io/triplesec/) (Salsa 20, AES, and Twofish).
 
-      The data that is sent to the server is:
+      In addition, some data is sent to third party APIs:
 
-      - During the initial keys/signature exchange, the party that joins the arbitration
-        sends his ***public* key**, his **signature** and the **triple-SHA256 of the multisig
-        script** (to verify both parties ended up with the same script)
-        to the other party via the server.
-      - When a transaction is created, the **partially signed transaction** is sent to the other parties via the server.
-        This is the same transaction that later becomes part of the blockchain, and thus
-        mostly considered public information.
+      - To load the multisig balance and unspent outputs, the **multisig address** is sent to
+        the [Chain API](https://chain.com/) (over SSL).
+      - The final **transaction** is broadcasted to the Bitcoin network using
+        the [HelloBlock API](https://helloblock.io/) (over SSL).
 
-      **Note:** In a future release, this data will be encrypted end-to-end.
-      You can track the progress [here](https://github.com/shesek/bitrated/issues/1).
-
-      Also, optionally, you can check if an arbitrator public key is associated with a registered
-      user in the new/join transaction page using the "Check public key" button.
-      This sends the **triple-SHA256 of his public key** to our servers, which allows us to
-      check if it exists on our index, without revealing the actual public key if its not.
-
-      In addition to that, some data is shared with third parties:
-
-      - To load the multisig balance and unspent inputs, the **multisig address** is sent to
-        [blockchain.info api](https://blockchain.info/api/blockchain_api) (over SSL).
-      - The final **transactions** is broadcasted to the Bitcoin network using the
-        [blockchain.info pushtx service](https://blockchain.info/pushtx) (over SSL).
-
-      Except for those cases, nothing else is sent to the server during the arbitration process.
-      The arbitration data is stored in the hash portion of the URL, which is *not* sent to the
+      The multisig information is only stored in the hash portion of the URL, which is *not* sent to the
       server during http requests and is only accessible to you and people you choose to share URLs with.
 
       Whenever we display URLs, we clearly state who it should be shared with and what
-      data they contain. URLs that contain your private key are always marked with "DO-NOT-SHARE".
+      data they contain. URLs that contain private keys are always marked with "DO-NOT-SHARE".
       
       **You are responsible for keeping a safe and secure backup of your URL.
       The data contained in the URL is cryptographically required for releasing
@@ -88,6 +68,17 @@ block content
       your public key. If you're starting a transaction, you should also import the
       multisig address to your local wallet (the command is available on the multisig
       page).
+
+      #### Cross-site scripting
+      Cross-site scripting attacks could be used to gain access to sensitive information stored client-side.
+      To mitigate this, we:
+
+      - Properly sanitize all user input prior to displaying it.
+      - Don't store sensitive information globally (using cookies or local storage).
+        Private keys only exists in-memory while the transaction page is opened,
+        meaning that a cross-site scripting attack would have to happen within the transaction
+        page (which is a static page that loads static resources) - an attack vector on other
+        pages won't provide access to sensitive information.
 
       #### Browser extension
 
@@ -157,15 +148,15 @@ block content
       giving them access to sensitive information.
 
       #### Open source
-      This website is [open sourced](TODO) under the MIT license, and can be audited
+      This website is [open sourced](https://github.com/shesek/bitrated) under the AGPLv3 license, and can be audited
       by anyone with technical background.
 
       #### Bug bounty
-      We welcome security audits and offer a bounty of 1 BTC for responsibly disclosing
+      We welcome security audits and offer a bounty of 0.1 BTC for responsibly disclosing
       security issues or breaches in our client-server model.
       If you found a bug, please contact us at [security@bitrated.com](mailto:security@bitrated.com).
 
-      At the time of writing, the BTC/USD exchange rate is ~$110.
+      At the time of writing, the BTC/USD exchange rate is ~$1100.
       If this drastically changes (to either side) we'll pay the
-      equivalent BTC of that instead.
+      equivalent BTC of $110 instead.
 

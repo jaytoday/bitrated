@@ -8,10 +8,10 @@ form.tx-builder(action='http://')
     | <strong>Balance:</strong> <span class="balance">unknown</span> 
     button.btn.btn-mini.update-balance(type='button', data-toggle='tooltip', title='Only includes confirmed transactions.')
       i.icon-refresh
-    = ' '
-    span.muted.
-      (loaded from blockchain.info,
-      see <a href="https://blockchain.info/address/#{multisig}/"><i class="icon-share"></i> full transaction history</a>)
+    if !testnet
+      = ' '
+      span.muted.
+        (see <a href="https://blockchain.info/address/#{multisig}/"><i class="icon-share"></i> full transaction history</a>)
   .addresses
     .address.form-inline
       button.btn.add-address(type='button', tabindex=-1): i.icon-plus
@@ -40,8 +40,6 @@ form.tx-builder(action='http://')
       span.change-amount n/a
       = ' '
       i.icon-question-sign(data-toggle='tooltip', title='Change is paid back to the multisig address, and can be released in the future.')
-  :markdown
-    **Note:** The other parties must be connected in order to receive transaction requests.
 .tx-requests
   h3 Transaction requests
   p The other parties has requested you to approve the following transactions.

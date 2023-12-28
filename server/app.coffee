@@ -14,11 +14,13 @@ module.exports = express().configure ->
 
   @locals
     url: @settings.url
+    ver: process.env.VER or ''
     testnet: !!process.env.TESTNET
     testnet_api: process.env.TESTNET_API
     pretty: @settings.env is 'development'
 
   @db = mongoose.connect process.env.MONGO_URI or 'mongodb://localhost/'
+  @db.set 'debug', true if @settings.env is 'development'
   @models = require('./models')(@db)
 
   @use express.favicon()
@@ -31,6 +33,7 @@ module.exports = express().configure ->
   server = createServer this
   require('./websocket').call(this, server)
   require('./assets').call(this) if (@settings.env is 'development') or process.env.SERVE_ASSETS
+  @use express.static process.env.STATIC_PATH if process.env.STATIC_PATH
   # assets are pre-compiled and served by nginx on production
 
   @use '/u', require('./user')(this)

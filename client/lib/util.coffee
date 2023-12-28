@@ -24,12 +24,18 @@ error_displayer = (container) -> (e) ->
   throw e if DEBUG
 
 # Parse base64-encoded query string
-parse_query = (str=document.location.hash.substr(1)) ->
+parse_query = do(
+  decode64 = (s) -> base64ToBytes s.replace(/( )/g, '+')
+) -> (str=document.location.hash.substr(1)) ->
   query = qs.parse str
   # Firefox decodes the hash, making the qs.parse() call decode it twice,
   # making "%2B" parse as a space. Replacing this back to a plus sign
   # makes it work on Firefox.
-  query[k] = base64ToBytes v.replace(/( )/g, '+') for k, v of query when v.length
+  query[k] = decode64 v for k, v of query when v.length and k isnt 'trent'
+  # Trent is special cased - can also be an arbitrator username
+  if query.trent?
+    query.trent = if query.trent.length <= 15 then query.trent \
+                  else decode64 query.trent
   query
 
 # Create query string for the given data, with base64 encoding
@@ -60,8 +66,20 @@ render = do ($root = $ '.content') -> (el) ->
   el.find('[data-toggle=tooltip]').tooltip()
   el.find('[data-toggle=popover]').popover()
 
+# Enable .click-to-select behavior
+click_to_select = ->
+  # This wouldn't work in IE, which isn't supported anyway.
+  # If IE support is added some day, this could be done with createTextRange.
+  return unless window.getSelection?
+
+  $(document.body).on 'click', '.click-to-select', ->
+    range = document.createRange()
+    range.selectNodeContents this
+    window.getSelection().addRange range
+
 module.exports = {
   lpad, rpad, extend
   iferr, error_displayer
   parse_query, format_url, navto, success, render
+  click_to_select
 }

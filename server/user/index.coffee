@@ -2,6 +2,7 @@ express = require 'express'
 marked = require 'marked'
 ValidationError = require 'mongoose/lib/error/validation'
 { iferr, only } = require '../../lib/util'
+{ get_address, ADDR_PUB } = require '../../lib/bitcoin'
 { join } = require 'path'
 
 PUBKEY_LEN = 65
@@ -50,11 +51,7 @@ module.exports = ({ models, locals }) -> express().configure ->
     res.format
       json: -> res.json user
       html: -> res.render 'profile', { user }
-      text: -> res.send """Username: #{user.username}
-                           Pubkey: #{user.pubkey}
-                           Signature: #{user.sig}
-                           \n---------------------\n
-                           #{user.content}"""
+      text: -> res.send format_text user
 
   # Update profile
   @post '/:user', (req, res, next) ->
@@ -64,7 +61,7 @@ module.exports = ({ models, locals }) -> express().configure ->
   # User list
   user_list = (req, res, next) ->
     page = +req.params.page or 1
-    User.find().paginate page, USERS_PER_PAGE, iferr next, (users, total) ->
+    User.find().sort('-order').paginate page, USERS_PER_PAGE, iferr next, (users, total) ->
       is_html = req.accepts('html, json, text') is 'html'
       users = users.map format_user
       pages = Math.ceil total / USERS_PER_PAGE
@@ -79,11 +76,25 @@ module.exports = ({ models, locals }) -> express().configure ->
   format_user = ({ _id, pubkey, content, sig }) =>
     username: _id
     pubkey: pubkey.toString 'hex'
+    pubkey_address: get_address pubkey, ADDR_PUB
     content: content
     sig: sig.toString 'base64'
     profile_url: @settings.url + "u/#{_id}"
-    tx_url: @settings.url + "new.html#trent=#{encodeURIComponent pubkey.toString 'base64'}"
+    tx_url: @settings.url + "new.html#trent=#{encodeURIComponent _id}"
 
+  format_text = ({ username, pubkey, pubkey_address, content, sig, profile_url }) -> """
+    Username: #{username}
+    Public key: #{pubkey}
+    Public key address: #{pubkey_address}
+    URL: #{profile_url}
+
+    -----BEGIN BITCOIN SIGNED MESSAGE-----
+    #{content}
+    -----BEGIN SIGNATURE-----
+    #{pubkey_address}
+    #{sig}
+    -----END BITCOIN SIGNED MESSAGE-----
+  """
   ###
   # Rate
   @get '/u/:user/rate', identify, (req, res) -> res.render 'rate', user: req.user
